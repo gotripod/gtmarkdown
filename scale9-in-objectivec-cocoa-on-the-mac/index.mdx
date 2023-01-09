@@ -1,0 +1,175 @@
+---
+title: 'Scale-9 in Objective-C Cocoa on the Mac'
+description: ""
+published: 2009-06-18
+redirect_from: 
+            - https://gotripod.com/insights/scale-9-objective-c-cocoa-mac/
+categories: "Development insights"
+hero: ../../../defaultHero.jpg
+---
+Having used flash extensively for the last few years I have really come to rely on using Scale-9 scaling on UI elements in the rich internet apps I design and develop. It is a great technique for things like rounded rectangles, button graphics etc and ensuring the rounded corners do not distort when stretched.
+
+I have recently been doing Cocoa Development on Mac OS X 10.5 and was looking for a way to do this in Cocoa and [came across](http://www.karlkraft.com/index.php/2007/11/14/nsdrawninepartimage/) a great drawing method named [NSDrawNinePartImage](http://developer.apple.com/documentation/Cocoa/Reference/ApplicationKit/Miscellaneous/AppKit_Functions/Reference/reference.html). The method has the following signature:
+
+```
+<code class="language-objectivec">void NSDrawNinePartImage(NSRect frame,
+   NSImage *topLeftCorner,
+   NSImage *topEdgeFill,
+   NSImage *topRightCorner,
+   NSImage *leftEdgeFill,
+   NSImage *centerFill,
+   NSImage *rightEdgeFill,
+   NSImage *bottomLeftCorner,
+   NSImage *bottomEdgeFill,
+   NSImage *bottomRightCorner,
+   NSCompositingOperation op,
+   CGFloat alphaFraction,
+   BOOL flipped
+);
+```
+
+This method requires the developer to provide 9 separate images to create the 9 sections of the scale 9 image. Luckily the article I had stumbled across had a handy example for using a single class, so I thought that I would use their technique to create a simple generic class that can be used to draw a single NSImage as a Scale-9 scalable image. This could be used for example in an NSView or NSButtonCell.
+
+```
+<code class="language-objectivec">//
+//  GTDrawImage.m
+//  StretchMyView
+//
+//  Created by Jon Baker on 17/06/2009.
+//  Copyright 2009 Go Tripod Ltd. All rights reserved.
+//
+
+#import "GTDrawImage.h"
+
+@implementation GTDrawImage
+
++(void) drawScalableImage:(NSImage *)sourceImage scaleTopLeft:(NSPoint)topLeftPoint scaleBottomRight:(NSPoint)bottomRightPoint inFrame:(NSRect)frame
+{
+	NSSize sourceSize = [sourceImage size];
+
+	// Top left
+	NSRect topLeftTileRect = NSMakeRect(0, 0, topLeftPoint.x, sourceSize.height - topLeftPoint.y);
+	NSRect topLeftCutRect = NSMakeRect(0, topLeftPoint.y, topLeftTileRect.size.width, topLeftTileRect.size.height);
+
+	// TopRight
+	NSRect topRightTileRect = NSMakeRect(0,0, sourceSize.width - bottomRightPoint.x, topLeftTileRect.size.height);
+	NSRect topRightCutRect = NSMakeRect(sourceSize.width - topRightTileRect.size.width, topLeftPoint.y, topRightTileRect.size.width, topRightTileRect.size.height);
+
+	// Top
+	NSRect topTileRect = NSMakeRect(0, 0, sourceSize.width - topLeftTileRect.size.width - topRightTileRect.size.width, topLeftTileRect.size.height);
+	NSRect topCutRect = NSMakeRect(topLeftPoint.x, topLeftPoint.y, topTileRect.size.width, topTileRect.size.height);
+
+	// Bottom Left
+	NSRect bottomLeftTileRect = NSMakeRect(0, 0, topLeftCutRect.size.width, bottomRightPoint.y);
+	NSRect bottomLeftCutRect = NSMakeRect(0, 0, bottomLeftTileRect.size.width, bottomLeftTileRect.size.height);
+
+	// Bottom Right
+	NSRect bottomRightTileRect = NSMakeRect(0,0, topRightCutRect.size.width, bottomLeftTileRect.size.height);
+	NSRect bottomRightCutRect = NSMakeRect(topRightCutRect.origin.x, 0, bottomRightTileRect.size.width , bottomRightTileRect.size.height );
+
+	// Bottom
+	NSRect bottomTileRect = NSMakeRect(0,0, topTileRect.size.width, bottomLeftTileRect.size.height);
+	NSRect bottomCutRect = NSMakeRect(topCutRect.origin.x, 0, bottomTileRect.size.width, bottomTileRect.size.height);
+
+	// left
+
+	NSRect leftTileRect = NSMakeRect(0, 0, bottomLeftTileRect.size.width, sourceSize.height - topTileRect.size.height - bottomTileRect.size.height);
+	NSRect leftCutRect = NSMakeRect(0, bottomRightPoint.y, leftTileRect.size.width, leftTileRect.size.height);
+
+	// right
+
+	NSRect rightTileRect = NSMakeRect(0, 0, topRightCutRect.size.width, leftCutRect.size.height);
+	NSRect rightCutRect = NSMakeRect(bottomRightPoint.x, bottomRightPoint.y, rightTileRect.size.width, rightTileRect.size.height);
+
+	//center
+	NSRect centerTileRect = NSMakeRect(0, 0, topTileRect.size.width, leftTileRect.size.height);
+	NSRect centerCutRect = NSMakeRect(topCutRect.origin.x, bottomRightPoint.y, centerTileRect.size.width, centerTileRect.size.height);
+
+	NSImage *topLeft = [[NSImage alloc] initWithSize:topLeftTileRect.size];
+	[topLeft lockFocus];
+	[sourceImage drawInRect:topLeftTileRect fromRect:topLeftCutRect operation:NSCompositeCopy fraction:1.0];
+	[topLeft unlockFocus];
+
+	NSImage *top = [[NSImage alloc] initWithSize:topTileRect.size];
+	[top lockFocus];
+	[sourceImage drawInRect:topTileRect fromRect:topCutRect operation:NSCompositeCopy fraction:1.0];
+	[top unlockFocus];
+
+	NSImage *topRight = [[NSImage alloc] initWithSize:topRightTileRect.size];
+	[topRight lockFocus];
+	[sourceImage drawInRect:topRightTileRect fromRect:topRightCutRect operation:NSCompositeCopy fraction:1.0];
+	[topRight unlockFocus];
+
+	//setup center section, left, right
+	NSImage *left = [[NSImage alloc] initWithSize:leftTileRect.size];
+	[left lockFocus];
+	[sourceImage drawInRect:leftTileRect fromRect:leftCutRect operation:NSCompositeCopy fraction:1.0];
+	[left unlockFocus];
+
+	NSImage *center = [[NSImage alloc] initWithSize:centerTileRect.size];
+	[center lockFocus];
+	[sourceImage drawInRect:centerTileRect fromRect:centerCutRect operation:NSCompositeCopy fraction:1.0];
+	[center unlockFocus];
+
+	NSImage *right = [[NSImage alloc] initWithSize:rightTileRect.size];
+	[right lockFocus];
+	[sourceImage drawInRect:rightTileRect fromRect:rightCutRect operation:NSCompositeCopy fraction:1.0];
+	[right unlockFocus];
+
+	NSImage *bottomLeft = [[NSImage alloc] initWithSize:bottomLeftTileRect.size];
+	[bottomLeft lockFocus];
+	[sourceImage drawInRect:bottomLeftTileRect fromRect:bottomLeftCutRect operation:NSCompositeCopy fraction:1.0];
+	[bottomLeft unlockFocus];
+
+	NSImage *bottom = [[NSImage alloc] initWithSize:bottomTileRect.size];
+	[bottom lockFocus];
+	[sourceImage drawInRect:bottomTileRect fromRect:bottomCutRect operation:NSCompositeCopy fraction:1.0];
+	[bottom unlockFocus];
+
+	NSImage *bottomRight = [[NSImage alloc] initWithSize:bottomRightTileRect.size];
+	[bottomRight lockFocus];
+	[sourceImage drawInRect:bottomRightTileRect fromRect:bottomRightCutRect operation:NSCompositeCopy fraction:1.0];
+	[bottomRight unlockFocus];
+
+	NSDrawNinePartImage(
+						frame,
+						topLeft, top, topRight,
+						left, center, right,
+						bottomLeft, bottom, bottomRight,
+						NSCompositeSourceOver, 1.0, NO);
+
+	[topLeft release];
+	[top release];
+	[topRight release];
+	[left release];
+	[center release];
+	[right release];
+	[bottomLeft release];
+	[bottom release];
+	[bottomRight release];
+}
+
+@end
+```
+
+To use this generic classes, you simply need to import it where required:
+
+```
+<code class="language-objectivec">#import "GTDrawImage.h"
+```
+
+...and then you can call from within, for example the drawRect:, selector using the following method:
+
+```
+<code class="language-objectivec">- (void)drawRect:(NSRect)rect {
+	[GTDrawImage drawScalableImage:baseImage scaleTopLeft:NSMakePoint(8, 16) scaleBottomRight:NSMakePoint(16,8) inFrame: [self bounds]];
+}
+```
+
+`drawScalableImage` takes an NSImage, in this case baseImage, and two reference points (NSPoint) to split the image into nine slices, firstly the scaleTopLeft: and secondly the scaleBottomRight:, both located from the bottom left corner. So for example to split a 24px x 24px image into 9 equal 8px by 8px segments (see below), the topLeftPoint would be x=8px, y=16px and the bottom x=16 and y=8.
+
+Just download the following classes into your projects and away you go:
+
+- Header: [GTDrawImage.h](http://clockobj.co.uk.s3.amazonaws.com/GTDrawImage.h)
+- Implementation: [GTDrawImage.m](http://clockobj.co.uk.s3.amazonaws.com/GTDrawImage.m)
+- Sample Project using GTDrawImage: [StretchMyView.zip](http://clockobj.co.uk.s3.amazonaws.com/StretchMyView.zip) (Adapted example I found. Unfortunately I can't remember where and so don't know who to credit)

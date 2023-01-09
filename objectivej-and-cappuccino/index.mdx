@@ -1,0 +1,55 @@
+---
+title: 'Objective-J & Cappuccino'
+description: ""
+published: 2008-09-07
+redirect_from: 
+            - https://gotripod.com/insights/objective-j-cappuccino/
+categories: "Development insights"
+hero: ../../../defaultHero.jpg
+---
+This may be an unusual first post in my Objective-C and Cocoa categories however it is quite relevant as the guys behind [280 Slides](http://280slides.com/) have released a [new open source extension](http://cappuccino.org/) to the Javascript language known as Objective-J and a new Javascript framework based on Cocoa named Cappuccino.
+
+Other than having a very nice logo designed by the guys at [Sofa](http://madebysofa.com/) my first impressions are they have implemented Objective-C in javascript. To me this seems an unusual choice as I can't image there are that many developers (within the web development industry) who are that familiar with Objective-C. Maybe I am wrong, certainly with the current gold rush to develop for the iPhone this will increase. I must admit I have been toying with Objective-C recently and once I got the hang of the syntax am really starting to enjoy it. So maybe there is method to their madness?[]()[]()
+
+The [Cappuccino framework](http://cappuccino.org/) has been likened to the recently released (and overhyped in my opinion - seems slow and clunky to me) [SproutCore](http://www.sproutcore.com/) framework. However I am extreamly impressed with how quick [280 Slides](http://280slides.com/) responds to user interactions and in addition to this the set of controls provided with Cappuccino have a nicer OS X quality to them.
+
+My personal opinion is that the future of Rich Internet Applications does not lie with Javascript (though I am biased to Flex). It is not that I dislike Javascript, quite the oposite in fact. My reservations mainly lie in Javascript relying too heavily on the HTML DOM and is at the mercy of browsers and their stakeholders (for which there are too many). One of the nices things with technologies such as Flex and Silverlight is the cross browser consistency. Not only this but also the many rich media features such as image manipulation & processing, the ability to do advanced animation including 3D animation, video features etc. which to me put the Rich in Rich Internet Applications.
+
+I may well eat my words as two major players in the form of Apple and Google are backing Javascript as the future standard for RIA development. Google's [Chrome](http://www.google.com/chrome) browser addresses some of the performance and stability issues and Apple has recently based it's online MobileMe business on Javascript (aparently using [SpoutCore](http://www.sproutcore.com/)) as well as introducing new extensions to Javascript such as the Canvas tag that help overcome some of Javascripts shortfalls.
+
+One thing is sure I take my hat off to these guys for pushing the boundaries of Javascript and in particular for implementing Objective-C in Javascript. If you are an Objective-C developer, it is well worth a look as you will be able to quickly develop javascript web applications using a near identical language. If not, check it out anyway. These guys can certainly claim that this is Cocoa for Web Development.
+
+### Update
+
+I wanted to include a couple of code snippets (taken from Cappuccino.org) just to illustrate how similar to Objective-C, Objective J is.
+
+In Objective-J classes are declared much like an Objective-C header file:
+
+```
+<code class="language-objectivec">@implementation Person : CPObject
+{
+   CPString name;
+}
+@end
+```
+
+Methods are declared using the identical Objective-C syntax:
+
+```
+<code class="language-objectivec">- (void)setName:(CPString)aName
+{
+	name = aName;
+}
+- (CPString)name
+{
+	return name;
+}
+```
+
+And class methods can be called using a once again similar syntax:
+
+```
+<code class="language-objectivec">[myPerson setJobTitle: "Founder" company: "280 North"];
+```
+
+[Cocoa Master Scott Stevenson has done a nice comparison between Cocoa and Cappuccino, well worth a read..](http://theocacao.com/document.page/593)

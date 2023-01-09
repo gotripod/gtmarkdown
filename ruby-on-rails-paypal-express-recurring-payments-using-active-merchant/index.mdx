@@ -1,0 +1,214 @@
+---
+title: 'Ruby on Rails, PayPal Express Recurring Payments using Active Merchant'
+description: ""
+published: 2008-09-08
+redirect_from: 
+            - https://gotripod.com/insights/ruby-rails-paypal-express-recurring-payments-using-active-merchant/
+categories: "Development insights"
+hero: ../../../defaultHero.jpg
+---
+I recently needed to setup recurring payments through PayPal's express checkout for a subscription based site I have writen using Ruby on Rails. There is already an excellent framework for interacting with most payment gateways, including PayPal, for Ruby called [Active Merchant](http://www.activemerchant.org/). Unfortunately recurring payments support in Active Merchant for PayPal Express Checkout is limited to a [script pasted into their lighthous bug tracking system](http://jadedpixel.lighthouseapp.com/projects/11599-active-merchant/tickets/17-patch-creating-paypal-recurring-payments-profile-with-activemerchant#ticket-17-4). The trouble is that this script only covers creating subscription profiles and also later getting details of that profile, but I needed to be able to suspend and cancel subscriptions profiles as well as make changes to the subscription from my site.
+
+**\*\*\*\* UPDATE: ActiveMerchant recently removed the functionality to use PayPal's NVP API and so this code will no longer work with the latest ActiveMerchant. Raymond Law has kindly ported the code to use the SOAP API and [you can find out more information and usage on his blog](http://rayvinly.com/articles/2009/02/20/paypal-recurring-billing-with-activemerchant-in-ruby-on-rails/). \*\*\*\***
+
+Active Merchant is very easy to extend so I have written a Ruby class that can be dropped into /vendor/plugins/active_merchant/billing/gateways/ within your Rails project (assuming you have AM installed as a plugin)
+
+```
+<code class="language-ruby"># simple extension to ActiveMerchant for basic support of recurring payments with Express Checkout API
+#
+# See http://http://www.gotripod.com/2008/09/07/ruby-on-rails-paypal-express-recurring-payments-using-active-merchant/
+# for details on getting started with this gateway
+#
+#
+module ActiveMerchant #:nodoc:
+  module Billing #:nodoc:
+    class PaypalExpressRecurringNvGateway < Gateway
+      include PaypalNvCommonAPI
+
+      LIVE_REDIRECT_URL = 'https://www.paypal.com/cgibin/webscr?cmd=_customer-billing-agreement&token='
+      TEST_REDIRECT_URL = 'https://www.sandbox.paypal.com/cgi-bin/webscr?cmd=_customer-billing-agreement&token='
+
+      def redirect_url
+        test? ? TEST_REDIRECT_URL : LIVE_REDIRECT_URL
+      end
+
+      def redirect_url_for(token)
+          "#{redirect_url}#{token}"
+      end
+
+      def setup_agreement(description, options = {})
+        requires!(options, :return_url, :cancel_return_url)
+        commit 'SetCustomerBillingAgreement', build_setup_agreement(description, options)
+      end
+
+      def get_agreement(token)
+        commit 'GetBillingAgreementCustomerDetails', build_get_agreement(token)
+      end
+
+      def create_profile(money, token, options = {})
+        commit 'CreateRecurringPaymentsProfile', build_create_profile(money, token, options)
+      end
+
+      def get_profile_details(profile_id)
+        commit 'GetRecurringPaymentsProfileDetails', build_get_profile_details(profile_id)
+      end
+
+      def manage_profile(profile_id, action, options = {})
+        commit 'ManageRecurringPaymentsProfileStatus', build_manage_profile(profile_id, action, options)
+      end
+
+      def update_profile(profile_id, options = {})
+        commit 'UpdateRecurringPaymentsProfile', build_update_profile(profile_id, options)
+      end
+
+      def bill_outstanding(profile_id, money, options = {})
+        commit 'BillOutstandingAmount', build_bill_outstanding(profile_id, money, options)
+      end
+
+      private
+
+      def build_setup_agreement(description, options)
+        post = {}
+        add_pair(post, :billingagreementdescription, description)
+        add_pair(post, :returnurl, options[:return_url])
+        add_pair(post, :cancelurl, options[:cancel_return_url])
+        add_pair(post, :billingtype, "RecurringPayments")
+        add_pair(post, :paymenttype, options[:payment_type]) if options[:payment_type]
+        add_pair(post, :localecode, options[:locale]) if options[:locale]
+        add_pair(post, :billingagreementcustom, options[:custom_code]) if options[:custom_code]
+        post
+      end
+
+      def build_get_agreement(token)
+        post = {}
+        add_pair(post, :token, token)
+        post
+      end
+
+      def build_create_profile(money, token, options)
+        post = {}
+        add_pair(post, :token, token)
+        add_amount(post, money, options)
+        add_pair(post, :subscribername, options[:subscriber_name]) if options[:subscriber_name]
+        add_pair(post, :initamt, options[:initamt]) if options[:initamt]
+        add_pair(post, :failedinitamtaction, options[:failedinitamtaction]) if  options[:failedinitamtaction]
+        add_pair(post, :profilestartdate, Time.now.utc.iso8601)
+        add_pair(post, :billingperiod, options[:billing_period] ? options[:billing_period] : "Month")
+        add_pair(post, :billingfrequency, options[:billing_frequency] ? options[:billing_frequency] : 1)
+        add_pair(post, :totalbillingcycles, options[:billing_cycles]) if [:billing_cycles]
+        add_pair(post, :profilereference, options[:reference]) if options[:reference]
+        add_pair(post, :autobillamt, options[:auto_bill_amt]) if options[:auto_bill_amt]
+        add_pair(post, :maxfailedpayments, options[:max_failed_payments]) if options[:max_failed_payments]
+        add_pair(post, :shippingamt, amount(options[:shipping_amount]), :allow_blank => false) if options[:shipping_amount]
+        add_pair(post, :taxamt, amount(options[:tax_amount]), :allow_blank => false) if options[:tax_amount]
+        add_shipping_address(post, options[:shipping_address]) if options[:shipping_address]
+        post
+      end
+
+      def build_get_profile_details(profile_id)
+        post = {}
+        add_pair(post, :profileid, profile_id)
+        post
+      end
+
+      def build_manage_profile(profile_id, action, options)
+        post = {}
+        add_pair(post, :profileid, profile_id)
+        add_pair(post, :action, action)
+        add_pair(post, :note, options[:note]) if options[:note]
+        post
+      end
+
+      def build_update_profile(profile_id, options)
+        post = {}
+        add_pair(post, :profileid, profile_id)
+        add_pair(post, :note, options[:note]) if options[:note]
+        add_pair(post, :desc, options[:description]) if options[:description]
+        add_pair(post, :subscribername, options[:subscriber_name]) if options[:subscriber_name]
+        add_pair(post, :profilereference, options[:reference]) if options[:reference]
+        add_pair(post, :additionalbillingcycles, options[:additional_billing_cycles]) if options[:additional_billing_cycles]
+        add_amount(post, options[:money], options)
+        add_pair(post, :shippingamt, amount(options[:shipping_amount]), :allow_blank => false) if options[:shipping_amount]
+        add_pair(post, :autobillamt, options[:auto_bill_amt]) if options[:auto_bill_amt]
+        add_pair(post, :maxfailedpayments, options[:max_failed_payments]) if options[:max_failed_payments]
+        add_pair(post, :taxamt, amount(options[:tax_amount]), :allow_blank => false) if options[:tax_amount]
+        add_shipping_address(post, options[:shipping_address]) if options[:shipping_address]
+        post
+      end
+
+      def build_bill_outstanding(profile_id, money, options = {})
+        post = {}
+        add_pair(post, :profileid, profile_id)
+        add_amount(post, money, options)
+        add_pair(post, :note, options[:note]) if options[:note]
+        post
+      end
+
+      def build_response(success, message, response, options = {})
+        PaypalExpressNvResponse.new(success, message, response, options)
+      end
+
+    end
+  end
+end
+```
+
+With this class installed using Active Merchant to set up a subscription / recurring payment through PayPal Express Checkout is easy. Firstly setup your gateway object:
+
+```
+<code class="language-ruby">gw = ActiveMerchant::Billing::PaypalExpressRecurringNvGateway.new( :login => 'PAYPALEMAIL', :password => 'PASSWORD', :signature => 'PAYPALAPISIGNATURE' )
+```
+
+Then make a request to PayPal to setup the recurring payment. At this stage you pass through a description (which is what is shown to the user when they are asked to authorise the subscription so make it descriptive) and you also need to provide URLs on your site, that PayPal should redirect the subscriber back to when they either complete the payment, or alternatively if they choose to cancel.
+
+```
+<code class="language-ruby">response = gw.setup_agreement("Subscription £25 per month", :cancel_return_url => "https://mysite.com/cancel", :return_url => "https://mysite.com/complete" )
+```
+
+The request above returns us a token in the response from paypal and at this point we need to redirect the user to PayPal to authorise this subscription. The user will see the description "Subscription £25 per month" as sent in the previous request. We need to redirect the subscriber to PayPal using the following line of ruby:
+
+```
+<code class="language-ruby">redirect_to gw.redirect_url_for(response.token)
+```
+
+Once the user has authorised the subscription they are returned to the :return_url we specified earlier, at which point we can create the actual subscription using the following:
+
+```
+<code class="language-ruby">response = gw.create_profile(2500, response.token, :currency => "GBP", :reference => "34")
+```
+
+Note: PayPal are really confusing having one API for the US and another for the UK but if you are using PayPal Express (which is free) independently of PayPal Website Payments Pro (Which you need to pay for) the US PayPal Express API works for all countries (apart from Germany I believe) and as you can see above I am passing in the UK currency. I am using the US API and I have a UK PayPal account. Also note that I have passed in a reference (I have an IPN URL setup in my PayPal account - Unfortunately you cannot pass an IPN URL with the request) to be sent in the IPN.
+
+The previous step completes the set up of our Subscription. However if we need to later get information on the subscription or change it, we need to extract the Profile ID from the response as follows:
+
+```
+<code class="language-ruby">profile_id = response.params["profileid"]
+```
+
+With this profile_id we can then later use these additional methods that I have included, such as getting details of the subscription profile using:
+
+```
+<code class="language-ruby">gw.get_profile_details(profile_id)
+```
+
+Update the subscription using various options (i.e. changing subscription amount shown below):
+
+```
+<code class="language-ruby">gw.update_profile(profile_id, :money => 3000, :currency => "GBP")
+```
+
+Manage the subscription, for example cancel it as follows:
+
+```
+<code class="language-ruby">gw.manage_profile(profile_id, "Cancel", :note => "Your subscription has been cancelled by us")
+```
+
+And finally bill any outstanding subscription balance:
+
+```
+<code class="language-ruby">gw.bill_outstanding(profile_id, 2500, :currency=> "GBP", :note => "£20 Overdue Subscription")
+```
+
+Please note that as of yet this class is not part of Active Merchant, however it has been added to [Active Merchants case #17](http://jadedpixel.lighthouseapp.com/projects/11599-active-merchant/tickets/17-patch-creating-paypal-recurring-payments-profile-with-activemerchant#ticket-17-4) If you want to use this you will have to add it manually as above.
+
+I recommend reading [PayPals Express Checkout Integration Guide](https://www.paypal.com/en_US/pdf/PP_ExpressCheckout_IntegrationGuide.pdf) and the [Name Value Pair API Developer Guide and Reference](https://www.paypal.com/en_US/pdf/PP_NVPAPI_DeveloperGuide.pdf) for more information on what variables can be passed in each request to PayPal.

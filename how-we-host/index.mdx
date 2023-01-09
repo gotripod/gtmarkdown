@@ -1,0 +1,28 @@
+---
+title: 'How we host'
+description: ""
+published: 2018-11-19
+redirect_from: 
+            - https://gotripod.com/insights/how-we-host/
+categories: "Development insights, Hosting"
+hero: ../../../defaultHero.jpg
+---
+As part of our drive to [double-down on software](https://gotripod.com/insights/jack-trades-master-one/) and provide a great experience for our customers, we've been reviewing our hosting infrastructure. We recently talked about how our WordPress clients enjoy [security and redundancy](https://gotripod.com/insights/ensuring-security-wordpress-websites/), and we want to continue to provide that same great experience for the various web apps that we host. In this post, we'll look at the three providers we've chosen to partner with in order to make this happen.
+
+## Heroku
+
+Heroku is known as a "[Platform as a Service](https://en.wikipedia.org/wiki/Platform_as_a_service)" or PAAS, which means that it provides infrastructure to run an application while abstracting things like operating system updates and configuration of the underlying system components. It integrates with source control to allow us to deploy versioned code (and roll it back in case of issues!), and the [dyno](https://www.heroku.com/dynos) model lets us easily deal with high-traffic scenarios. Because Heroku is a cloud-based system, there's no single point of failure, which means that if something does go wrong, chances are Heroku will automatically switch things behind the scenes so visitors never see an issue.
+
+Heroku is built on Amazon's AWS platform and, as such, it complies with accreditations such as PCI Level 1 and ISO 27001. This, on top of the huge number of Heroku addons and the excellent administration tooling, means that Heroku is our primary choice when we need to host Ruby on Rails or PHP applications.
+
+## Microsoft Azure
+
+We built a bespoke ASP.NET content management system for [one of our clients](https://gotripod.com/work/tdk/), and since Heroku doesn't formally support ASP.NET, we needed to look elsewhere. Azure is Microsoft's answer to Amazon's AWS and their [Web Apps](https://docs.microsoft.com/en-us/azure/app-service/app-service-web-overview) provide a similar deployment model to that provided by Heroku. We can leverage Azure Storage to store uploaded documents in redundant fashion, and use Azure's SQL Server support to deliver scalable and highly available databases. While Heroku is perhaps easier to use, Azure is more flexible and lets us work at a lower-level, and as such we'll be moving our client's infrastructure to Azure in 2019.
+
+## Netlify
+
+For simpler sites which require little-to-no dynamic content, we turn to Netlify. It offers the same source control-based deployment model as Heroku and Azure, but it doesn't support projects that are powered by a programming language or framework like the previously mentioned Rails, PHP or ASP.NET. Instead, its strength lies in making static sites as good as they possibly can be, with free TLS/SSL, caching support, and a redundant delivery network. If needs be, we can augment the static site with some simple dynamic features such as forms, login & registration, and [custom functions](https://www.netlify.com/features/).
+
+## Host with Go Tripod
+
+You may notice that when we talk about these providers, we're reusing certain key terms such as versioning and redundancy. That's because these are features that we think should be included as standard by any responsible hosting provider. By setting ourselves up for success, we can focus more on building software and less on maintaining infrastructure. If you're looking for peace of mind when hosting your business-critical applications then [get in touch](https://gotripod.com/contact/).

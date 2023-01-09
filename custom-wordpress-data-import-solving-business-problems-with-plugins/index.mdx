@@ -1,0 +1,21 @@
+---
+title: 'Custom Wordpress data import - solving business problems with plugins'
+description: ""
+published: 2021-07-20
+redirect_from: 
+            - https://gotripod.com/insights/custom-wordpress-data-import-solving-business-problems-with-plugins/
+categories: "News"
+hero: ../../../defaultHero.jpg
+---
+Automotive industry manufacturer [Sanden](https://gotripod.com/work/sanden/) recently asked us to import a new set of data into [their site](https://sandenaftermarket.com/), which we built on WordPress several years ago. While we knew this was going to be a one-off custom WordPress data import, there were a few things to consider when deciding how to implement it.
+
+- The import would take a while to run, and we needed to see some kind of progress indicator
+- Because the import time will exceed the allowed request timeout, we'll need to process the import in the background
+- If anything went wrong during the import we'd need a log
+- It'd be good to do a "dry run" to check for problems without writing to the database
+
+This was one of those situations where WordPress is a little bit more of a hindrance than another system might be. Because the structure of the WordPress database is one-size-fits-all, it can be a bit tricky to do the kind of SQL INSERT you might do with other systems, and so we needed to jump through a few hoops. With the requirements asking for a dry run toggle, a progress indicator and a log display, it made sense to build a custom WordPress data import plugin which would show up in the WP admin and let us build a user interface. It could also use the WordPress authentication mechanism to restrict access to authorised users.
+
+Rather than reinvent the wheel, we used [Action Scheduler](https://actionscheduler.org/) as the backbone for our import processing. It also provided hooks to allow us to generate log files. It comes with its own dashboard to allow you to diagnose any issues, which we used during development of our plugin. Once that had been selected, the core of the import process was very simple - checking that records didn't already exist and using the [ACF](https://www.advancedcustomfields.com/) API to create them where missing.
+
+As well as these benefits, building a custom WordPress plugin gave us a means to logically separate our code. We could package it up in a zip file for easy installation and updates, making testing a breeze.

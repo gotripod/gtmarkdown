@@ -1,0 +1,189 @@
+---
+title: 'Software dependency management - a primer'
+description: ""
+published: 2020-10-02
+redirect_from: 
+            - https://gotripod.com/insights/software-dependency-management-a-primer/
+categories: "News"
+hero: ../../../defaultHero.jpg
+---
+<!-- wp:paragraph -->
+
+"Software dependency management" just sounds so glam, doesn't it? If we rephrase it to say "do less, get more" it starts to sparkle a little. Let's take a look at this essential topic and some rules that Go Tripod follow in our [projects](https://gotripod.com/work/).
+
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+
+A "dependency" refers to a unit of code that the rest of your code relies on. The most common way of incorporating it is to use the package manager associated with your language of choice. And so; in Ruby you might add a [gem](https://rubygems.org/) to your project, Rust uses [crates,](https://crates.io/) JavaScript has [npm](https://npmjs.org). Easy peasy.
+
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+
+Except [it isn't](https://www.youtube.com/watch?v=7mAFiPVs3tM). It's telling that searching for the title of this post on Google turns up the Wikipedia page for "[dependency hell](https://en.wikipedia.org/wiki/Dependency_hell)". Adding dependencies is one thing but we're talking software dependency _management_ here, and that involves not only keeping them up to date, but making sure you actually need those dependencies you're adding.
+
+<!-- /wp:paragraph -->
+
+<!-- wp:heading -->
+
+## Rule 1 of software dependency management: do you need it?
+
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+
+Let's talk about that last point first. Here we go, we're adding a dependency:
+
+<!-- /wp:paragraph -->
+
+<!-- wp:code -->
+
+```
+npm install stringconcat
+```
+
+<!-- /wp:code -->
+
+<!-- wp:paragraph -->
+
+In our theoretical JavaScript project, we're running a command to add a dependency called "stringconcat" so that we can join strings together. But do we need that? In JavaScript, we certainly don't:
+
+<!-- /wp:paragraph -->
+
+<!-- wp:code -->
+
+```
+const joinedString = 'my' + 'string';
+```
+
+<!-- /wp:code -->
+
+<!-- wp:paragraph -->
+
+This is a contrived example, but back in 2016 [a very simply library called left-pad was removed from NPM](https://qz.com/646467/how-one-programmer-broke-the-internet-by-deleting-a-tiny-piece-of-code/) and caused a great deal of consternation.
+
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+
+So before you run that command willy-nilly, think: do you need it? Or can you just write it yourself?
+
+<!-- /wp:paragraph -->
+
+<!-- wp:heading -->
+
+## Rule 2: is it any good?
+
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+
+Before adding the dependency, you need to make sure if it's of sufficient quality. This doesn't just mean that it has the features you need, or that you need to do an in-depth source code analysis, but you do need to perform some due diligence:
+
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+
+**How popular is your dependency? Are there more popular alternatives?**
+
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+
+Popularity doesn't guarantee quality, but it's a good indicator that the community relies on it. That should mean that people are willing to maintain it.
+
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+
+**How many maintainers does it have?**
+
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+
+Is there only one person working on this code? What happens if they get really busy?
+
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+
+**Are there lots of open issues or pull requests?**
+
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+
+If the code's on GitHub, take a look at the issues and pull requests. Does it seem like these are neglected, or is the project team responsive and present?
+
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+
+There's no hard and fast rule for assessing the health of a project, but thinking along these lines should allow you to get a feel for whether code's going to be well maintained.
+
+<!-- /wp:paragraph -->
+
+<!-- wp:heading -->
+
+## Rule 3: do you _still_ need it?
+
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+
+We might find that our code evolves. We might find that [_platforms_ evolve](https://caniuse.com/). In [those cases](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/padStart) we need to keep on top of our dependencies to make sure that we're not bringing anything in unnecessarily. Particularly in cases where native implementations become available, we should use that to get a speed boost for free.
+
+<!-- /wp:paragraph -->
+
+<!-- wp:heading -->
+
+## Rule 4 of software dependency management: keep up to date!
+
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+
+Rules 1 & 2 are mere preludes to the killer pain of dependency management: updates. Let's look at an example using Ruby on Rails 6, which introduced Action Cable to integrate WebSockets into your application. You try and upgrade Rails as follows:
+
+<!-- /wp:paragraph -->
+
+<!-- wp:code -->
+
+```
+bundle update rails
+```
+
+<!-- /wp:code -->
+
+<!-- wp:paragraph -->
+
+And see the dreaded:
+
+<!-- /wp:paragraph -->
+
+<!-- wp:code -->
+
+```
+Bundler could not find compatible versions for gem "actionpack"
+<INSERT ENDLESS MESSAGES>
+```
+
+<!-- /wp:code -->
+
+<!-- wp:paragraph -->
+
+This is the reality of dependency hell. A gem relies on actionpack 5.x, so when you try and upgrade actionpack to 6.x you can't, because of that one gem. So, you update that gem, but you can't, because either it hasn't been updated for Rails 6 or it in turn depends on _another_ gem which is tied to Rails 5. Repeat this all the way down the dependency tree or until you have removed all of your hair and nails, whatever comes first.
+
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+
+There is no foolproof way around this, but the easiest way is to follow the other rules: keep your dependencies limited to ones that you really need and ones which are well maintained. Secondly, don't pin to some random broken git revision, and don't use your own forks of code. You're asking for trouble. Thirdly, make updating your dependencies routine. Do it regularly and you'll avoid having to wade through dependency hell and migration instructions in changelogs. Not only will your hair and nails thank you, but your project will too.
+
+<!-- /wp:paragraph -->
+
+<!-- wp:heading -->
+
+<!-- /wp:paragraph -->

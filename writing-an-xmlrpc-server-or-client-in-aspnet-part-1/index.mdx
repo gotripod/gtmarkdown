@@ -1,0 +1,103 @@
+---
+title: 'Writing an XML-RPC server or client in ASP.Net: Part 1'
+description: ""
+published: 2007-03-03
+redirect_from: 
+            - https://gotripod.com/insights/writing-xml-rpc-server-client-asp-net-part-1/
+categories: "Development insights"
+hero: ../../../defaultHero.jpg
+---
+[Part Two available here](/insights/writing-xml-rpc-server-client-asp-net-part-2)
+
+I have recently be working on a project which needed to implement the blogging MetaWebLog API, allowing users to post blog messages from their favorite blog editor, such as Windows Live Writer or blog directly from MetaWebLog API enabled websites such as Flickr or Digg. My tutorial below will show you how to easily create or consume an XML-RPC service such as the MetaWebLog API.
+
+The MetaWebLog API runs over [XML-RPC](http://www.xmlrpc.com/) an open standard for HTTP based remote procedure calls and is the standard api protocol for blog platforms. A [.Net XML-RPC framework](http://www.xml-rpc.net/) already exists for use in ASP.Net, which has been developed by Charles Cook of [CookComputing](http://www.cookcomputing.com/blog/index.html) .
+
+**Setting up the project**
+
+You can create an XML-RPC server or client easily within an existing project. To start working with XML-RPC, the first thing you will need to do in download the [.Net XML-RPC implementation from CooksComputing.](http://www.xml-rpc.net/) Although I think the XML-RPC implementation is an excellent stable offering, the documentation is a little sketchy and hard to follow at times which is why I am posting this tutorial. Once you have downloaded the latest version, extract only the following file from the .zip archive: This is the core component you will need:
+
+For .Net 2.0 the file is: _**bin/CookComputing.XmlRpcV2.dll**For .Net 1.0/1.1 the file is: **bin1_0/CookComputing.XmlRpc.dll**_
+
+Once extracted you will need to copy this .dll to your projects /bin/ directory. You can now create or consume an XML-RPC service.
+
+**Creating a XML-RPC Server**
+
+For this example I am going to implement the MetaWebLog API in C# to do this we need to add two files to our project, a generic handler and a class file to handler requests to the generic handler.
+
+For this example I will create a handler named MetaWebLog.ashx and it will contain simply the following webhandler directive:
+
+```
+<code class="language-csharp"><%@ WebHandler Language="C#" Class="MetaWebLogHandler" %>
+```
+
+I now need to create my MetaWebLogHandler.cs class file in the App_Code directory. Within this file we first need to reference the CookComputing.XmlRpc package as follows:
+
+```
+<code class="language-csharp">using CookComputing.XmlRpc;
+```
+
+Once we have done that we need to alter the class definition as follows passing some parameters to the XML-RPC service and inheriting the class from XmlRpcService as follows:
+
+```
+<code class="language-csharp">[XmlRpcService(Name = "MetaWebLogApi",
+Description = "This is XML-RPC which implement MetaWeblog API.",
+AutoDocumentation = true)]
+face=”Courier New”>http://www.miletbaker.com/Blog/MetaWebLog.ashx")]
+public class MetaWebLogHandler : XmlRpcService
+{
+
+}
+```
+
+The Name parameter indicates the name of our service, in this case MetaWebLogApi, there is a description and the AutoDocumentation allows us to browse to the XML-RPC service (.ashx generic handler file) and see the available methods.
+
+We can now create our methods, the [MetaWebLog API is documented at the XML-RPC site](http://www.xmlrpc.com/metaWeblogApi) , but again it is not very clear. However, I was able to find a [definition on MSDN](http://msdn2.microsoft.com/en-us/library/bb259697.aspx) which was very helpful. We basically need to implement the following methods:
+
+metaWeblog.newPost metaWeblog.editPost metaWeblog.getPost metaWeblog.getCategories metaWeblog.getRecentPosts blogger.deletePost blogger.getUsersBlogs blogger.getUserInfo
+
+_Note: I have found that with the last three methods prefixed blogger. although these are defined by XML-RPC like this, some MetaWebLog API clients call these methods with the metaWebLog. prefix instead._
+
+For each of these methods we need to make a compiler declaration before the method to indicate the XML-RPC method name. I will not go through each method but rather show you one as an example of how to work with an XML-RPC request.
+
+```
+<code class="language-csharp">[XmlRpcMethod("metaWeblog.getPost")]
+public XmlRpcStruct getPost(string postid, string username, string password)
+{
+ If (Authenticate(username, password))
+ {
+ 	//We need to create an XML-RPC Struct to return
+ 	XmlRpcStruct rpcstruct = new XmlRpcStruct();
+ 	rpcstruct.Add("postid", "1234");
+ 	rpcstruct.Add("dateCreated", DateTime.Now.PublishedAt.ToUniversalTime());
+ 	rpcstruct.Add("title", "A blog post");
+ 	rpcstruct.Add("link", "http://www.miletbaker.com/blog/Article.aspx?id=1234");
+ 	rpcstruct.Add("description", "test");
+ 	rpcstruct.Add("categories", new string[] {"News","Opinion"});
+ 	rpcstruct.Add("publish", true);		return rpcstruct;
+ }
+ else {
+ 	HttpContext.Current.Response.Clear();
+ 	HttpContext.Current.Response.StatusCode = 403;
+ 	HttpContext.Current.Response.Flush();
+ 	return null;
+ }
+
+}
+```
+
+In this example we are being sent a blog post item id, and a username and password. We first want to check the username and password are valid, I have an Authenticate method to do this. If we are not authorized I use the Response object to return a 403 – Not Authorised message, else we can continue. I would normally use the post ID to query a database but here I have hard coded the response. We need to respond within a nested XML element / struct with specific parameter names, to do this we use the XmlRpcStruct object. We create a new XML-RPC object and then use the Add method to add each parameter name (key) and value. Once we have done that we can return it. XML-RPC also handles Arrays and in the MetaWebLog API, the MetaWebLog.getRecentPosts needs to return each post as an element of an array of XmlRpcStructs.
+
+Once we have written our methods we can build and browse to our MetaWebLog.ashx file and if all is working the methods should be listed in the browser.
+
+To overcome the issue with some blog editors calling metaweblog.deletePost rather than blogger.deletePost, you simply create an additional method to handle this and then call your other method i.e.
+
+```
+<code class="language-csharp">[XmlRpcMethod("MetaWebLog.deletePost")]
+public bool MWLDeletePost(string appKey, string postid, string username, string password, bool publish)
+{
+	return this.deletePost(appKey, postid, username, password, publish);
+}
+```
+
+In [part II](/insights/writing-xml-rpc-server-client-asp-net-part-2), I will look at how we implement an XML-RPC client to ping blogging servers.

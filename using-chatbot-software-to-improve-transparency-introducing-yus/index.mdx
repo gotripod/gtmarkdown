@@ -1,0 +1,38 @@
+---
+title: 'Using chatbot software to improve transparency - introducing Yus'
+description: ""
+published: 2018-06-25
+redirect_from: 
+            - https://gotripod.com/insights/using-chatbot-software-to-improve-transparency-introducing-yus/
+categories: "News"
+hero: ../../../defaultHero.jpg
+---
+Ten years ago, just before Go Tripod was formed, I was an independent contractor with a strong eye on my bottom line, so [I created a way to track my income](https://colinramsay.co.uk/personal/projects/php/freshbooks/plastiscenic/2008/11/27/freshbooks-invoice-widget.html) at-a-glance. This was extremely useful at the time, as it helped a young Colin make sure he had enough pennies at the end of each month, and we now use a much more advanced version at GT to make sure we're bringing in some good dollar every year.
+
+## The business challenge
+
+We'd like to be able to quickly get information on our current financial performance, including monthly tallies and current debtors and creditors. This data should be available in a frictionless manner - without needing to log in to accounting software, crunch numbers or run reports.
+
+## The solution (In a nutshell)
+
+In my decade-old solution, I was using Freshbooks for accounting. At GT we now use Xero, a cloud-based accounting program that makes the whole process of invoicing, filing returns and tracking payments much easier. We worked out a way to pull our financial information out of Xero and have it posted into Slack, the chat service that our team uses each day. We wrote a chatbot, called Yus, which we can use to request vital information about how well Go Tripod is performing. Yus will also give us a breakdown of bills that we need to pay and invoices that are outstanding.
+
+## The solution (The software side)
+
+We built Yus using a combination of [Botkit](https://botkit.ai/) and [xero-node](https://xeroapi.github.io/xero-node/). It runs on [Heroku](https://www.heroku.com/home). Here's a sample of what it can do:
+
+![Invoking '@yus invoicing this month' in Slack](https://content.gotripod.com/images/2018/06/yus-1.gif)
+
+We can send Yus simple phrases and it'll respond accordingly. This time round it's decided to exaggerate somewhat 🤑
+
+![Invoking '@yus who owes us' in Slack](https://content.gotripod.com/images/2018/06/yus-2.gif)
+
+In this case we get a list of clients who we might otherwise not have chased for payment until our bookkeeper flagged this up. Now, Yus can help us liaise with our clients to make sure invoices don't slip through the cracks.
+
+## Conclusion
+
+Transparency is key. Low friction transparency is even better. By using chatbot software we can listen to the heartbeat of Go Tripod and take immediate steps to perform course corrections. Fancy building some clever technology to improve your business? [Get in touch](https://gotripod.com/contact/).
+
+## A little word about Yus
+
+The name "Yus" comes from two letters in the Cyrillic script: Little yus (Ѧ ѧ) and big yus (Ѫ ѫ). We use this character to represent a tiny tripod in our email footers.

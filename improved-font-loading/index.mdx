@@ -1,0 +1,20 @@
+---
+title: 'Improved font loading'
+description: ""
+published: 2018-05-15
+redirect_from: 
+            - https://gotripod.com/insights/improved-font-loading/
+categories: "Development insights, Fonts, JavaScript, Performance"
+hero: ../../../defaultHero.jpg
+---
+Back in February [I wrote about a font-loading technique I'd implemented on a new project](https://gotripod.com/insights/improving-site-response-times-deferring-downloading-web-fonts/), but there was a problem with it - the script ran on every page load meaning the browser cache was never used to serve the fonts. There are many variations on the same theme with some using session cookies to determine if it's a user's first visit to the site, but they all come with their own quirks to overcome. After further research and testing I decided that, while not fully supported yet, the most effective and future-proof solution to this issue is not a JavaScript solution, but a CSS one.
+
+## Enter our old friend, `@font-face`
+
+The `@font-face` rule has been around as long as I can remember but went steadily out of favour as the popularity of FOUT techniques grew. This is because its default behaviour results in a FOIT while the font is downloaded and with the rise of mobile devices on sluggish connections users can be left with a blank page for seconds or even minutes. This is no longer the case thanks to a new attribute, `font-display`.
+
+[Browser support for `font-display` is growing](https://caniuse.com/#search=font-display) with the latest versions of Firefox, Chrome and Safari all playing ball. It degrades gracefully for all other browsers, falling back to its default behaviour and, as an added perk, we don't need to worry about users with JavaScript disabled.
+
+## Optimising fonts
+
+Here at Go Tripod we use [Google Fonts](https://fonts.google.com/) for most projects but in their default format (TTF) file sizes can be much larger than is required. On slower connections this means the web fonts will take noticeably longer to swap with the system fonts and it's best we do everything to deliver these assets to the user as quickly as possible. We use [Font Squirrel's Webfont Generator](https://www.fontsquirrel.com/tools/webfont-generator) to convert our TTFs from Google into WOFF and WOFF2 formats which often reduces their size by over 50% meaning the time it takes to download them is significantly decreased. This coupled with the `font-display: swap;` attribute means we're providing most users with a superior experience which doesn't rely on JavaScript, falls back gracefully and will soon be supported by all major browsers.

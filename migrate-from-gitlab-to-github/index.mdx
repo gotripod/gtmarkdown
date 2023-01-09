@@ -1,0 +1,119 @@
+---
+title: 'Migrate from GitLab to GitHub'
+description: ""
+published: 2019-01-08
+redirect_from: 
+            - https://gotripod.com/insights/migrate-from-gitlab-to-github/
+categories: "Development insights, Hosting"
+hero: ../../../defaultHero.jpg
+---
+[![](https://content.gotripod.com/images/2019/01/photo-1531030874896-fdef6826f2f7-1024x683.jpg)](https://content.gotripod.com/images/2019/01/photo-1531030874896-fdef6826f2f7.jpg)
+
+Just interested in the code? [Cut to the chase](#migrator-code).
+
+GitHub and GitLab are competing services providing source control products based on Git. Source control enables us to keep track of all of the code changes we make to a project so that we can roll them back in the event of a problem. Seeing the history of a project can also help understand why decisions were made, years after they happened.
+
+[GitHub have just announced](https://blog.github.com/2019-01-07-new-year-new-github/) that they're providing free private repositories for individuals. This is great news for the community at large, but since we run an "Organisation" account on GitHub, it didn't directly affect us. However, it did give us a chance to re-evaluate how we host our source code. We previously self-hosted GitLabCE, which is a fine piece of software. However, it had two drawbacks:
+
+1\. We're hosting another server, which requires updating and auditing. 2. There are some third-party services which only interact with GitHub and not GitLab
+
+We decided to close our GitLab server and move to GitHub, and the first step of that is moving our repositories. We had 132 hosted on that server, so moving them one-by-one simply wasn't practical. Fortunately, both GitLab and GitHub have APIs which we could use to migrate automatically.
+
+We're going to use a Ruby script to call the APIs. The gitlab and octokit gems wrap the GitLab and GitHub APIs respectively, so once we've installed those we need to configure them:
+
+```
+<code class="language-ruby">Gitlab.configure do |config|
+  config.endpoint       = GL_ENDPOINT
+  config.private_token  = GL_PRIVATE_TOKEN
+end
+
+gh_client = Octokit::Client.new(:access_token => GH_PRIVATE_TOKEN)
+```
+
+Having done so we can fetch all of our GitLab projects:
+
+```
+<code class="language-ruby">gl_projects = Gitlab.projects.auto_paginate
+```
+
+Auto-pagination means we can grab all of them at once. Now, we need to do something with each project:
+
+```
+<code class="language-ruby">gl_projects.each do |gl_project|
+# do something in here
+end
+```
+
+Firstly, we specify the destination repository in GitHub:
+
+```
+<code class="language-ruby">destination_repo = "#{GH_ORG_NAME}/#{gl_project.name}"
+```
+
+GH_ORG_NAME is a variable containing the organisation which will contain this repository, in our case "gotripod". You'll see where to specify this in the full source code later.
+
+Before we can grab the repo from GitLab, we need to make sure we're a member of its project. That's straightforward:
+
+```
+<code class="language-ruby">begin Gitlab.add_team_member(gl_project.id, 4, 40)
+  puts "You've been successfully added as a maintainer of this project on GitLab."
+rescue Gitlab::Error::Conflict => e
+  puts "You are already a member of this project on GitLab."
+end
+```
+
+And we also need to create the destination repo on GitHub:
+
+```
+<code class="language-ruby">begin gh_client.create_repository(gl_project.name, organization: GH_ORG_NAME, private: true)
+  puts "New repo created on GitHub."
+rescue Octokit::UnprocessableEntity => e
+  # If error everything else could fail, unless the error was that the repo already existed
+  puts "Error creating repository on GitHub: #{e.message}"
+end
+```
+
+Finally, we can trigger the import!
+
+```
+<code class="language-ruby">gh_client.start_source_import(
+  destination_repo,
+  gl_authed_uri(gl_project),
+  vcs: "git",
+  accept: Octokit::Preview::PREVIEW_TYPES[:source_imports]
+)
+```
+
+`gl_authed_uri` is a method defined as:
+
+```
+<code class="language-ruby">def gl_authed_uri(gl_project)
+  gl_repo_uri = URI.parse(gl_project.http_url_to_repo)
+
+  "http://oauth2:#{GL_PRIVATE_TOKEN}@#{GL_SERVER}#{gl_repo_uri.path}"
+end
+```
+
+If we tried to import from the GitLab repository URL without doing this, it would throw an error telling us we don't have authorisation to access it. With this, method, we're using our private GitLab token to gain access.
+
+For extra bonus points, we can get a report of the progress of each import using Octopoller:
+
+```
+<code class="language-ruby">Octopoller.poll(timeout: 15000) do
+  result = gh_client.source_import_progress(destination_repo, accept: Octokit::Preview::PREVIEW_TYPES[:source_imports])
+
+  print "r#{result.status_text}"
+
+  if result.status_text == "Done"
+    nil
+  else
+    :re_poll
+  end
+end
+```
+
+This keeps checking the import until it returns a status of "Done", at which point the import is complete! This makes the migration process a lot slower though, because it'll wait until GitHub confirms that it's done its work. If you comment out this block, then you can speed through all of the repos and let GitHub do the work in the background. It'll email you when an import has completed.
+
+We've made [the full source code](https://github.com/gotripod/gitlab-to-github-migrator) of this basic GitLab to GitHub migrator available on GitHub (unsurprisingly!). There's some additional configuration code and a simple feature to allow resuming interrupted migrations. We don't provide support, but you're welcome to open issues and pull requests to collaborate on improving it. There are certainly a number of improvements that could be made (for example allowing an option to disable the progress report without having to comment it out), but we'll leave that for another post.
+
+Grab our [GitLab to GitHub migrator](https://github.com/gotripod/gitlab-to-github-migrator) now!

@@ -1,0 +1,62 @@
+---
+title: 'Writing an XML-RPC server or client in ASP.Net: Part 2'
+description: ""
+published: 2007-03-09
+redirect_from: 
+            - https://gotripod.com/insights/writing-xml-rpc-server-client-asp-net-part-2/
+categories: "Development insights"
+hero: ../../../defaultHero.jpg
+---
+In my [previous article](/insights/writing-xml-rpc-server-client-asp-net-part-1) I covered how to setup an XML-RPC server in .Net, in particular looking at how to service XML-RPC MetaWebLog API requests. In this second part I am looking at how we can easily construct an XML-RPC client to ping blog directory or search services such as Technorati, Google BlogSearch, blo.gs etc.
+
+If you have not read [part one](/insights/writing-xml-rpc-server-client-asp-net-part-1), I recommend you take a look at this article first as it covers the set-up and configuration of [CooksComputing XML-RPC provider](http://www.xml-rpc.net/), which is required for this tutorial.
+
+**Creating an XML-RPC client proxy class**
+
+Before we can make and XML-RPC client request, we need to create a proxy/wrapper class to handle our client requests for us. In this example I am going to create a client that pings [blogflux.com](http://pinger.blogflux.com/) . To use their XML-RPC service you need to sign-up for a free account.
+
+To ping blogflux.com we need to send an XML-RPC call to [http://pinger.blogflux.com/rpc/](http://pinger.blogflux.com/rpc/ "http://pinger.blogflux.com/rpc/")
+
+Which is configured to accept pings that follow the WebLog ping format.
+
+Firstly, we will create our proxy class in our App_Code directory as follows:
+
+```
+<code class="language-javascript">using System.Reflection;
+using CookComputing.XmlRpc;
+
+[XmlRpcUrl("http://pinger.blogflux.com/rpc/")]
+class BlogFlux : XmlRpcClientProtocol{
+
+     [XmlRpcMethod("weblogUpdates.ping")]
+     public XmlRpcStruct ping(string weblogname, string weblogurl)
+     {
+          return (XmlRpcStruct)Invoke(MethodBase.GetCurrentMethod(), new object[] { weblogname, weblogurl });
+     }
+
+}
+```
+
+Here we need to insert a compiler directive before the class definition which indicates the URL we want this proxy to communicate with, in this case: pinger.blogflux.com/rpc/. We then need to insure that our class inherits from XmlRpcClientProtocol. Once we have done this we can define the methods that we want to call on the remote RPC-XML server. the WebLog ping protocol supports two method calls, weblogUpdates.ping and weblogUpdates.extendedPing. The most widely implemented in the weblogUpdates.ping method, which takes two parameters, the first being a string containing the name of your blog, the second (again a string) the URL of your blog. webblogUpdates.ping returns a XML-RPC struct indicating whether the ping succeeded or not, so our method returns and XmlRpcStruct and to initiate the call we use the following code:
+
+```
+<code class="language-javascript">Invoke(MethodBase.GetCurrentMethod(), new object[] { weblogname, weblogurl});
+```
+
+As you can see we pass the parameters onto the XML-RPC client call within the second parameter of the Invoke method call and all XML-RPC methods are stored in an array of type object.
+
+Once we have our client proxy defined, we can easily create and invoke a remote XML-RPC call as follows:
+
+```
+<code class="language-javascript">BlogFlux bf = new BlogFlux();
+bf.ping("Jon Milet Baker’s Blog", http://www.miletbaker.com/blog/);
+```
+
+And if we want to check the results of our client XML-RPC call we can do the following.
+
+```
+<code class="language-javascript">XmlRpcStruct struct = bf.ping("Jon Milet Baker’s Blog", http://www.miletbaker.com/blog/);
+label1.text = struct["errMsg"];
+```
+
+The XML-RPC protocol is widely adopted especially by blog platforms. This tutorial covers the basics of XML-RPC and I recommend reading [Charles Cooks FAQ](http://www.xml-rpc.net/) for more information, but as you can see this code could easily be adapted for any Remote Procedure Call requirement and provides an alternative to SOAP based Web Services.

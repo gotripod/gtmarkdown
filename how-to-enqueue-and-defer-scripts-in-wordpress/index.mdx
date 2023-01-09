@@ -1,0 +1,27 @@
+---
+title: 'How to enqueue and defer scripts in WordPress'
+description: ""
+published: 2018-03-20
+redirect_from: 
+            - https://gotripod.com/insights/enqueue-defer-scripts-wordpress/
+categories: "Development insights, JavaScript, Performance, WordPress"
+hero: ../../../defaultHero.jpg
+---
+In a [previous article](https://gotripod.com/insights/making-use-defer-attribute-easily-eliminate-render-blocking-scripts/) I talked about adding the `defer` attribute to script tags to avoid blocking page render. However, if you’re developing a WordPress theme, chances are you won’t simply be able to amend this HTML. Instead you'll need to make use of the [wp_enqueue_script](https://developer.wordpress.org/reference/functions/wp_enqueue_script/) function from within your theme's functions.php file. This function allows you to tell WordPress if your script has any dependancies, which you pass through as an array, and WordPress uses this information to load scripts in the correct order thus avoiding any JavaScript errors. Because plugins load assets via the [wp_enqueue_scripts](https://developer.wordpress.org/reference/hooks/wp_enqueue_scripts/) hook it's important you do too so your theme plays nice with them.
+
+So we've got our scripts loading in the correct order - great! But unfortunately WordPress doesn't load them asynchronously for you meaning your HTML will pause parsing while the script is downloaded and executed. Sounds pretty bad for performance, and it is, so we'll be needing an extra something in our functions.php file. While this isn't a perfect solution it's the most solid I've found so far and is what we currently implement here at Go Tripod:
+
+```
+<code class="language-php">// Defer scripts
+// Source: https://www.laplacef.com/2014/05/24/how-to-defer-parsing-javascript-in-wordpress/
+if (!(is_admin())) {
+    function defer_js($url) {
+        if (FALSE === strpos($url, '.js')) return $url;
+        if (strpos($url, 'jquery.js')) return $url;
+        return "$url' defer onload='";
+    }
+    add_filter('clean_url', 'defer_js', 11, 1);
+}
+```
+
+Your scripts' `src` attribute will be replaced with itself along with `defer` and empty `onload` attributes resulting in them being loaded asynchronously and giving your site a dramatic performance boost.

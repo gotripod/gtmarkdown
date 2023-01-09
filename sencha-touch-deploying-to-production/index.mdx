@@ -1,0 +1,76 @@
+---
+title: 'Sencha Touch - Deploying to Production'
+description: ""
+published: 2012-05-02
+redirect_from: 
+            - https://gotripod.com/insights/sencha-touch-deploying-production/
+categories: "Development insights"
+hero: ../../../defaultHero.jpg
+---
+When examining how to build a new Sencha Touch 2 application for production, I wanted to make sure I wasn't reinventing the wheel. I'd heard of Sencha's commandline SDK tools but this gave me cause to look into it more. Now that I've done so, I'm impressed, but I think the documentation could be doing with a little more detail. I'm concentrating solely on deployment for now, though the tool supports other scenarios.
+
+There were a few things we wanted to do:
+
+- Build, concatenate and minimise our custom SASS theme
+- Resolve dependencies (in order!) for our JS, then concatenate and minimise
+- Work out how to incorporate those into our index.html with sensible versioning
+- Ensure all our caching policies were optimal
+
+With one exception, Sencha's tool helps us with that. I recommend getting an overview of how to install the [SDK Tools at the Sencha Documentation pages](http://docs.sencha.com/touch/2-0/#!/guide/command) first. That guide also gives an overview of the various facilities the tool provides.
+
+## Setup
+
+If you've used the sencha command to create a new application then you're good to go - you have all the files you need to get building. If not, I recommend you use it to create a new, empty application, and copy over the bits you need to get up and running, and to make sure you're adhering to the correct directory structure. The documentation does give a good overview of the directory structure which is required - take a look at the section "Understanding Your Application's Structure".
+
+Once you're there, you'll have an app.json in the root of your project. It's important that you complete this correctly in order to be able to build your project successfully; the "js" section needs to have any extra JavaScript dependencies - such as third-party libraries - entered.
+
+You don't need to add in all of the files you use in your application. The sencha command will resolve all of those dependencies automatically when you build. You do need to make sure you're using requires in your application to make the dependency tree clear, but hopefully you're doing that anyway.
+
+Assuming you've got app.json ready to go, we can move on to making a build.
+
+## Index.html
+
+Generally you'll access your project via http://localhost/index.html, or something similar. The app.json file will have asked you to specify this URL, and you should have a template index.html created for you if you used the sencha command to generate your new project. Your index.html should have the following line:
+
+This is a key part of the build process, so you need to leave it intact!
+
+## Building
+
+The aspect we're interested in is run via the command:
+
+```
+sencha app build
+```
+
+If you run it without theparameter you'll see the following:
+
+![](https://content.gotripod.com/images/2012/05/Screen-Shot-2012-05-02-at-19.19.48.png)
+
+This gives you an idea of what's going to happen. Here's the way the build process works:
+
+1. Copies required resources
+2. Resolves dependencies by firing up a headless web browser and running your app
+3. Concatenates and minifies your JS in the correct order
+4. Builds a HTML5 cache manifest
+5. Generates delta files to minimise what changes get sent to the client
+6. Generates a new version of your index.html
+
+There's lots happening here, and it depends on what environment you specify when you run the command. To be clear, you can always keep using http://localhost/index.html, and that's your development version.
+
+## Testing Environment
+
+Testing creates a/build/testing/ directory, and you can access the build at http://localhost/build/testing/index.html. In the testing environment, JS gets concatenated but not minified. It doesn't do any of the caching/manifest stuff described above, but does resolve all your dependencies into the concatenated file.
+
+## Production Environment
+
+In addition to the steps taken to build for the testing environment, production will also minimise your JS, create a cache manifest, and as the documentation says: "Storing all JavaScript and CSS assets inside Local Storage on first load, and patches them via delta updates between releases". The [Sencha blog post](http://www.sencha.com/blog/behind-sencha-command-and-the-build-process/) goes into more detail on this subject.
+
+## Issues
+
+We're yet to deploy our application to production, so this post is a work in progress. In particular the testing and production builds highlight code issues that aren't apparently on development - deprecation warnings become errors, and there are various issues with the order in which our code is included. I'm also a little concerned with the delta update mechanism - I need to do further testing to make sure updates are indeed pushed to clients as expected, as we always want to make sure that they have the very latest code.
+
+You'll also notice that the sencha command doesn't do anything with SASS. Hopefully this will come in future, but it's a simple extra command to generate the theme CSS.
+
+## Conclusion
+
+The sencha command has become an integrated part of our build process. I'd like to see more documentation, and the proof will be in our final deployment, but it looks like Sencha have provided another key part of the end-to-end development of a mobile application.

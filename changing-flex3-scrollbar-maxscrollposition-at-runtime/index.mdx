@@ -1,0 +1,21 @@
+---
+title: 'Changing Flex3 ScrollBar maxScrollPosition at runtime'
+description: ""
+published: 2008-07-05
+redirect_from: 
+            - https://gotripod.com/insights/changing-flex3-scrollbar-maxscrollposition-runtime/
+categories: "Development insights"
+hero: ../../../defaultHero.jpg
+---
+A quick tip if you have a dynamic scroll bar and want to bind it's maxScrollPosition to a value at runtime unfortunately you can't use the MXML binding, i.e. `maxScrollPosition={value}`.
+
+Alternatively you need to set the value programatically in an event handler, AND importantly call `updateDisplayList()` on the scrollbar. i.e.
+
+```
+<code class="language-actionscript"><!--[CDATA[
+	private function handleSlideChange():void {
+		scroll.maxScrollPosition = slider.value;
+		scroll.invalidateDisplayList();
+	}
+]]-->
+```

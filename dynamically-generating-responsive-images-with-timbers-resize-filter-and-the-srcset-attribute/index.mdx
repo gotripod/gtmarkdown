@@ -1,0 +1,39 @@
+---
+title: 'Dynamically generating responsive images with Timber''s resize filter and the srcset attribute'
+description: ""
+published: 2018-02-21
+redirect_from: 
+            - https://gotripod.com/insights/dynamically-generating-responsive-images-timbers-resize-filter-srcset-attribute/
+categories: "Development insights, srcset, Timber, Twig, WordPress"
+hero: ../../../defaultHero.jpg
+---
+[Timber](https://www.upstatement.com/timber/) has loads of useful filters built in which can make all kinds of jobs much easier. One of those jobs is resizing and cropping images, for which we can use the resize filter. The syntax is simple, as with all things [Twig](https://twig.symfony.com/) - we simply add the filter to our image source, passing through a width or height to resize or both to crop.
+
+The following example will resize the image to a width of 300px while retaining its aspect ratio:
+
+```
+<code class="language-twig">{{ item.src|resize(300) }}
+```
+
+The following example will resize the image to a height of 300px while retaining its aspect ratio:
+
+```
+<code class="language-twig">{{ item.src|resize(0, 300) }}
+```
+
+The following example will crop the image to a width and height of 300px:
+
+```
+<code class="language-twig">{{ item.src|resize(300, 300) }}
+```
+
+We can then define multiple sizes and pass these into a srcset attribute to make sure we’re serving a suitable image size based on the device viewport. This is especially important for mobile devices who don’t need to download and display a full HD hero image on a 320px wide screen.
+
+The following example defines three sizes, one for mobile, tablet and desktop - devices with a viewport width of up to 480px will get the 480px wide image and so on.
+
+```
+<code class="language-twig">srcset="{{ item.src|resize(480) }} 480w, {{ item.src|resize(1280) }}
+1280w, {{ item.src|resize(1920) }} 1920w"
+```
+
+If you’re new to srcset or want to delve into it a bit deeper, [CSS Tricks’ article](https://css-tricks.com/responsive-images-youre-just-changing-resolutions-use-srcset/) is a good read.

@@ -1,0 +1,34 @@
+---
+title: 'Improving site response times by deferring the downloading of web fonts'
+description: ""
+published: 2018-02-07
+redirect_from: 
+            - https://gotripod.com/insights/improving-site-response-times-deferring-downloading-web-fonts/
+categories: "Development insights, Fonts, JavaScript, Performance"
+hero: ../../../defaultHero.jpg
+---
+One of the first things I decided to tackle as part of my recent work on website response times, assuming it’d be a simple process, was render blocking web fonts. Little did I know I was opening up a right can of words (sorry)…
+
+Numerous techniques have been developed over the past few years with varying levels of difficulty, visual effects and results as described in detail [here](https://www.zachleat.com/web/comprehensive-webfonts/). The two main visual effects that divide opinion are whether to go down the FOIT (Flash Of Invisible Text) or FOUT (Flash Of Unstyled Text) route. There now seems to be a general consensus within the community that FOUT is preferable for UX reasons with most research showing that it’s better to give users something than nothing - this is especially important for users on slow connections and can lead to high bounce rates.
+
+NB: FOFT (Flash of Faux Text) is the new kid in town but I’ve not tried to implement it yet so won’t discuss here.
+
+After some research I decided to go with [Web Font Loader](https://github.com/typekit/webfontloader), a script born from a collaboration between Google and Typekit to easily load fonts from a variety of services. We want to load this script asynchronously to avoid it blocking page render so the browser will initially display the content using system fonts and apply the web fonts once they’ve downloaded. The example code below is what you’ll need to add within the head to load Open Sans:
+
+```
+<code class="language-javascript"><script async defer type="text/javascript">
+    WebFontConfig = {
+        google: {
+            families: ['Open Sans']
+        }
+    };
+    (function(d) {
+        var wf = d.createElement('script'), s = d.scripts[0];
+        wf.src = 'https://ajax.googleapis.com/ajax/libs/webfont/1.6.26/webfont.js';
+        wf.async = true;
+        s.parentNode.insertBefore(wf, s);
+    })(document);
+</script>
+```
+
+One drawback of this approach is its reliance on JavaScript - users with JavaScript disabled will be stuck with system fonts. This is a tiny number of users, [around 0.2%](https://blockmetry.com/blog/javascript-disabled), so we can argue this progressive enhancement benefitting 99.8% of users is worth the sacrifice. Of course, if you’re using web fonts that are wildly different to the fallback system fonts loading before them you probably won’t want to use FOUT as the change in style would be too noticeable. In extreme cases this can even lead to changes in layout so, as with all things dev, do make sure you test thoroughly - you wouldn’t want a user on a slow connection to get halfway through a sentence then find it’s moved position!

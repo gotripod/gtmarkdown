@@ -1,0 +1,18 @@
+---
+title: 'Dynamic Nested Forms in Rails 2.3+ Using RJS'
+description: ""
+published: 2009-09-30
+redirect_from: 
+            - https://gotripod.com/insights/dynamic-nested-forms-rails-2-3-using-rjs/
+categories: "Development insights"
+hero: ../../../defaultHero.jpg
+---
+Rails 2.3 delivered a new feature that allows you to easily write forms in rails that can process nested attributes for related objects using the accepts_nested_attributes_for method in your models. Now there is a plugin to make adding and removing nested forms a walk in the park!
+
+I am not going to go into detail about this feature as [Ryan Daigle has an excellent write up on his blog](http://ryandaigle.com/articles/2009/2/1/what-s-new-in-edge-rails-nested-attributes#comment-form).
+
+However I have been looking at ways to easily add and remove nested form blocks using Javascript/RJS and came across a good method of achieving this [by Marsvin on the RailsForum website](http://railsforum.com/viewtopic.php?pid=91229).
+
+We have used this method a few times now, so thought we would roll it up into a plugin. Simply install the plugin to give you two new view helpers that allow you to create links to add and remove these nested form item partials using RJS.
+
+[Visit the plugin's page on GitHub to install or view the documentation.](http://github.com/miletbaker/add_nested_fields)

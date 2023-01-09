@@ -1,0 +1,22 @@
+---
+title: 'Making use of the defer attribute to easily eliminate render blocking scripts'
+description: ""
+published: 2018-01-24
+redirect_from: 
+            - https://gotripod.com/insights/making-use-defer-attribute-easily-eliminate-render-blocking-scripts/
+categories: "Development insights, JavaScript, Performance, WordPress"
+hero: ../../../defaultHero.jpg
+---
+When working on improving the response time of your site, one of the simplest optimisations to make is the deferring of scripts. In most cases, this can be done with the simple addition of the defer attribute to the script tags within your HTML:
+
+```
+<code class="language-markup"><script src="" defer></script>
+```
+
+When a browser gets to a script tag in your code, its default behaviour is to pause parsing of the HTML, opting to download and execute the script before resuming. Setting the defer attribute tells the browser not to pause, but instead download the script in the background and execute it once parsing of the HTML has completed.
+
+Another feature of using defer, which can be very useful, is that all scripts with the defer attribute will execute in the order they’re presented in your HTML. This is especially useful when writing scripts which rely on others as you can ensure these dependencies are executed first.
+
+Scripts can also be executed asynchronously using the async attribute but bear in mind that it should only be used if the script is not relied upon or does not rely on any others and will function correctly if run before HTML has finished parsing. For a clear visual representation of the different script loading options, [this article](http://www.growingwiththeweb.com/2014/02/async-vs-defer-attributes.html) has some simple infographics I’d recommend taking a look at.
+
+If you’re developing WordPress themes without the use of a template engine like [Timber](https://www.upstatement.com/timber/), you may not be able to edit this HTML and should instead make use of the [wp_enqueue_script function](https://developer.wordpress.org/reference/functions/wp_enqueue_script/) within your theme’s functions.php file - you should also use this method if using any WordPress plugins which run scripts on your site’s front end.

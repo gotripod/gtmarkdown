@@ -1,0 +1,251 @@
+---
+title: 'Web Crawling and Scraping Made Super Simple'
+description: ""
+published: 2021-10-07
+redirect_from: 
+            - https://gotripod.com/insights/super-simple-site-crawling-and-scraping/
+categories: "News"
+hero: ../../../defaultHero.jpg
+---
+<!-- wp:paragraph -->
+
+We recently built a tool to visit every page in a website and collect the resulting data into a JSON file, a process known as web **crawling** and **scraping**. The JSON file was then used to create a search feature on the site, no amendments were needed to the code that powered the site itself. Here's how we did it, and why we've open sourced the code to do it.
+
+<!-- /wp:paragraph -->
+
+<!-- wp:heading -->
+
+## The decision making process
+
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+
+There are a lot of solutions for crawling/spidering/scraping websites. A lot. And so obviously we decided to write our own so that it may become the [universal standard](https://xkcd.com/927/)! Actually, no. We built what we needed to get the job done well using an open source [scraping framework called Colly](http://go-colly.org/). But why couldn't we just use something that already existed, one of the many tools designed for this purpose?
+
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+
+Firstly, there is no one-size-fits-all solution for crawling. Every website is different. No matter which tool is used, you will have to specify what information you need, from which pages, and how you'd like it presented. Secondly, while we're not adverse to using SAAS solutions, in this case we wanted to be able to control our costs and run the crawler on our schedule without worrying about spiraling costs. These two issues mean that we need an easily configurable tool that we can run without jumping through too many hoops.
+
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+
+We'd already had experience with scraping tools that could be configured with a GUI and so strongly favoured something which would let us capture our configuration as code - therefore allowing us to store it under source control.
+
+<!-- /wp:paragraph -->
+
+<!-- wp:heading -->
+
+## Colly - Web Crawling and Scraping in Go
+
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+
+After much research, Colly ticked our boxes: we could run it ourselves, we could configure it with code, and it was simple to set up and understand. Let's take a look at an example, which is written in Go as you might expect:
+
+<!-- /wp:paragraph -->
+
+<!-- wp:code {"className":"line-numbers"} -->
+
+```
+c := colly.NewCollector(
+    colly.AllowedDomains("gotripod.com"),
+)
+
+c.OnRequest(func(r *colly.Request) {
+    fmt.Println("Visiting", r.URL.String())
+})
+
+c.Visit("https://gotripod.com/")
+```
+
+<!-- /wp:code -->
+
+<!-- wp:paragraph -->
+
+This has three distinct parts:
+
+<!-- /wp:paragraph -->
+
+<!-- wp:list {"ordered":true} -->
+
+1. We create a "collector". It is only allowed to visit gotripod.com
+2. On each request, it should print the current URL
+3. Visit the Go Tripod homepage, starting the site crawling process
+
+<!-- /wp:list -->
+
+<!-- wp:paragraph -->
+
+All this will do is hit the GT homepage and stop, because we haven't told it what to do afterwards. And since we're writing a _crawler_ and not a _visitor_, we need to tell it where to crawl to next. After creating the collector, we can add the following code:
+
+<!-- /wp:paragraph -->
+
+<!-- wp:code -->
+
+```
+c.OnHTML("html", func(e *colly.HTMLElement) {
+    e.ForEach("a[href]", func(_ int, el *colly.HTMLElement) {
+        e.Request.Visit(el.Attr("href"))
+    })
+}
+```
+
+<!-- /wp:code -->
+
+<!-- wp:paragraph -->
+
+When Colly's collector detects that the requested URL is an HTML page, it'll trigger this callback and loop through every `<a>`element with an `href` attribute. It'll then visit the URL in the `href`. That's really all we need to _crawl_ through a website with Colly! This example code doesn't do much, so let's have a look at how we can _scrape_ information from the page.
+
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+
+The `OnHTML` method takes two parameters, a selector and a callback. That selector is anything supported by [goquery](https://github.com/PuerkitoBio/goquery) and if you're comfortable with CSS selectors then you'll be good. This selector specifies the element(s) that will be passed as the second argument to OnHTML, which has a type of [colly.HTMLElement](https://pkg.go.dev/github.com/gocolly/colly#HTMLElement). With the methods on that type you can further focus down your selection:
+
+<!-- /wp:paragraph -->
+
+<!-- wp:code -->
+
+```
+c.OnHTML("article", func(e *colly.HTMLElement) {
+    exportArticle(
+        e.ChildText("news__meta"), e.ChildText("news__title")
+    )
+}
+```
+
+<!-- /wp:code -->
+
+<!-- wp:paragraph -->
+
+Every time Colly sees an article element on the current page it'll pass it to the callback, where we use the ChildText method to select metadata and title for export. Colly has [loads of examples](https://github.com/gocolly/colly/tree/master/_examples) which go into further depth, so we'll leave our quick overview here.
+
+<!-- /wp:paragraph -->
+
+<!-- wp:heading -->
+
+## All aboard!
+
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+
+Having been suitably impressed by Colly's simplicity, we completed our project without fuss. It's not the first time we've written a crawler and so we wanted to see if we could easily use Colly in future projects without rewriting the same code. We wondered if we could extend Colly's use of selectors so that we could just reconfigure the crawler to run on a completely different project. It turned out we could!
+
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+
+Super Simple Scraper takes a JSON configuration file and pushes it into Colly's crawl engine. Out pops a JSONL file. Let's take a look at a configuration snippet. Web crawling and scraping ahoy!
+
+<!-- /wp:paragraph -->
+
+<!-- wp:code -->
+
+```
+"html": {
+    "selectors": {
+        "title": "title",
+        "h1": "h1",
+        "url": "{{ .Request.URL }}"
+    }
+}
+```
+
+<!-- /wp:code -->
+
+<!-- wp:paragraph -->
+
+This is the configuration used when scraping HTML pages. We specify that there should be a selector called "title" which grabs the contents of the title tag. Likewise a selector called "h1" that grabs the combined contents of all the h1 tags on the page. The last selector is a templated selector which grabs the URL of the page.
+
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+
+We've provided a Docker image to run SSScraper, which means that you can run it with a single command:
+
+<!-- /wp:paragraph -->
+
+<!-- wp:code -->
+
+```
+docker run -it -v pwd:/go/src/app -e "CONFIG=$(cat ./path/to/your/config.json | jq -r tostring)" gotripod/ssscraper:main
+```
+
+<!-- /wp:code -->
+
+<!-- wp:heading -->
+
+## SS Scraper provides results
+
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+
+And that'll produce a JSONL file, where the selector names are used as the JSON keys:
+
+<!-- /wp:paragraph -->
+
+<!-- wp:code -->
+
+```
+{"h1":"Want the internet to work for you? Got an idea for a project?","title":"Contact Go Tripod | website \u0026 web application development in Falmouth, Cornwall","url":"https://gotripod.com/contact/"}
+{"h1":"Topic: Git Got an idea for a project?","title":"Git Archives - Go Tripod","url":"https://gotripod.com/topics/git/"}
+```
+
+<!-- /wp:code -->
+
+<!-- wp:paragraph -->
+
+That's some Super Simple Scraping! The "title" and "h1" selectors are straightforward, but there's some interesting stuff happening in the "url" selector. Let's break that down to understand it a bit more.
+
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+
+We're using Go's text/templates package, and passing in the current request as a value. The selector {{ .Request.URL }} therefore becomes: "give me the value of the URL field on the Request variable".
+
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+
+Templates also have access to [sprig](https://masterminds.github.io/sprig/) helpers, which means you can get fancy with something like:
+
+<!-- /wp:paragraph -->
+
+<!-- wp:code -->
+
+```
+{{ .Request.URL.Path | regexFind \"\/(insights|work)\/\" | replace \"/\" \"\" }}
+```
+
+<!-- /wp:code -->
+
+<!-- wp:paragraph -->
+
+That would return either "insights", "work", or an empty string, depending on which appeared in the URL of the current page.
+
+<!-- /wp:paragraph -->
+
+<!-- wp:pullquote -->
+
+> Why JSONL? Because we can then import it straight into [Typesense](https://typesense.org/) to search it!
+
+<!-- /wp:pullquote -->
+
+<!-- wp:heading -->
+
+## Custom software for custom requirements
+
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+
+SS Scraper doesn't do anything that someone familiar with Go couldn't do, but it does mean that we can quickly deploy a crawler/scraper on a completely new project without having to write code. We can have different config files for different projects rather than having to start afresh each time. [SS Scraper is open source](https://github.com/gotripod/ssscraper/) on GitHub, and if you'd like us to help you deploy a crawler or scraper for your site, please [get in touch](https://gotripod.com/contact/).
+
+<!-- /wp:paragraph -->

@@ -1,0 +1,116 @@
+---
+title: 'Scaling up EasyMVC as your Flex application grows (Part 2: Services)'
+description: ""
+published: 2008-03-04
+redirect_from: 
+            - https://gotripod.com/insights/scaling-easymvc-flex-application-grows-part-2-services/
+categories: "Development insights"
+hero: ../../../defaultHero.jpg
+---
+EasyMVC is a lightweight architecture process for Adobe Flex and AIR first proposed by [Tom Bray](http://www.tombray.com/) of [SearchCoders](http://searchcoders.com/) and [Chatopica](http://www.chatopica.com). This is the second part covering Service calls, of a two part article on how to take that architecture and scale up to a simplified cairngorm style architecture when you outgrown EasyMVC.
+
+[Click here to read Scaling up EasyMVC part 1.](/insights/scaling-easymvc-flex-application-grows-part-1)
+
+Firstly I would like to add some clarification as to the motivation for these articles. I have had a few emails asking what the point of these articles are as I am just recreating Cairngorm. I hope these articles will satisfy two goals. Firstly having discussed EasyMVC and evangelised about it a little I feel I should offer a way to scale this up when your application grows, if not you could end up with a huge EasyMVC controller class that has 30 or so event handlers in addition to service calls etc which will get unmanageable, especially in a team of developers. Secondly I hope these articles will give an insight into how Cairngorm works from a simplified perspective. Cairngorm is an excellent architecture but it is intimidating for beginners and intermediates alike. This Scaled up EasyMVC architecture provides a simplified lightweight version of Cairngorm and also provides an upgrade path for EasyMVC adopters. In the first article we looked at how we can borrow the command design pattern (as used in Cairngorm) to split out our centralised event handlers into separate classes or commands. Firstly this makes your code more organised and easier to locate specific functionality when you application grows but also provides you with the basis for the next step in handling remote calls to web services, be that SOAP, REST or AMF services.
+
+At this point we are going to borrow [a technique used by Darren Schall](http://www.darronschall.com/weblog/archives/000234.cfm), where he suggests using the built in IResponder interface to handle web service responses.
+
+The IResponder interface defines that we should create two event handlers, one called result which takes one parameter of type Event (usually a ResultEvent) and one event handler called fault which takes one parameter of type Event (usually a FaultEvent).
+
+What we want, is for commands to handle our service calls. In the first article we created an interface for our commands called ICommandEMVC. Here we ensured all commands we created has an execute(e:Event) function which would be called as the event handler for all our centralised events. What we will now do is create a new Interface called IResponderCommandEMVC which will implement both the ICommandEMVC that we created and Flex’s build in IResponder interface. This will then give us a class definition that has an execute event handler that is called when we fire off a EasyMVC event that is handled by our central event handler, and result() and fault() event handlers that handles the results of our service call. We do this as follows:
+
+```
+<code class="language-actionscript">package com.triggersoft.core.emvc
+
+{
+
+  import mx.rpc.IResponder;
+
+  public interface IResponderCommandEMVC extends IResponder, ICommandEMVC
+
+  {
+
+  }
+
+}
+```
+
+We can now write command classes that implement IResponderCommandEMVC. We could implement the code to call our web service here but then we may duplicate effort whenever we need more than one command to call the same web service. So I like to create the equivalent of Cairngorm’s service locator or more simply a singleton that proxies my service calls.
+
+So for example, if we had a SOAP web service located on our localhost i.e. http://localhost/Service?WSDL which had an authenticate command that took a username and password parameter (and this is a simple example) we could do the following
+
+```
+<code class="language-actionscript">package com.triggersoft.project.controller.services
+
+{
+
+  public class MyService {
+
+    private static var _instance:MyService;
+
+    private var service:WebService;    public static function getInstance():void {
+
+      if (_instance == null) {
+
+      _instance = new RespondentWS();
+
+      }
+
+      return _instance;
+
+    }
+
+public function MyService:void {
+
+      service = new WebService();
+
+      service.loadWSDL(“http://locahost/Service?WSDL”);
+
+    }
+
+public function authenticate(responder:IResponder, username:String, password:String):void {
+
+      var at:AsynToken = service.authenticate(username, password);
+
+      at.addResponder(responder);
+
+    }
+
+  }
+```
+
+This means that we can call the authenticate method on this service from any command using the MyService.getInstance.authenticate() method and pass in a responder, the username and password.
+
+As our command implemented the IResponderCommandEMVC interface, which in turn implements the IResponder interface we can pass the command as a web service responder, so if we had AuthenticateCommand which was registered with our Controller (See part I) that listened to a custom event that stored the username and password. We could write the following command
+
+```
+<code class="language-actionscript">package com.triggersoft.project.controller.commands
+
+{
+
+  public class AuthenticateCommand {    public function execute(e:Event):void {
+
+      var ae:AuthenticationEvent = AuthenticationEvent (e)
+
+      MyService.getInstance().Authenticate(this, ae.username, ae.password)
+
+    }
+
+public function result(e:Event):void {
+
+      //handle web service result
+
+    }
+
+public function fault(e:Event):void {
+
+      //handle web service error
+
+    }
+
+}
+
+}
+```
+
+As you can see we can easily scale up EasyMVC to a lightweight version of Cairngorm as your application grows. In reading these articles, I hope you have gained an insight into the benefits of using a formal architecture such as this and also demystified the Cairngorm framework. EasyMVC does not have all the feature of Cairngorm but it is a light weight alternative that suits many projects from small to large.

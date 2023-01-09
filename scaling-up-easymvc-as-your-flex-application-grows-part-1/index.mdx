@@ -1,0 +1,126 @@
+---
+title: 'Scaling up EasyMVC as your Flex application grows (Part 1)'
+description: ""
+published: 2008-01-21
+redirect_from: 
+            - https://gotripod.com/insights/scaling-easymvc-flex-application-grows-part-1/
+categories: "Development insights"
+hero: ../../../defaultHero.jpg
+---
+EasyMVC is an excellent, easy to use Model View Controller architecture for Adobe Flex designed by [Tom Bray](http://www.tombray.com) from [Chatopica](http://www.chatopica.com). However as your apps grow you may find yourself outgrowing this architecture. For example as all your event handlers are centralised into one class, this class may get to large to maintain, especially as the team maintaining the app also expands.One of the best solutions I have found to handling a growing controller is to borrow the command pattern from [Cairngorm ](http://labs.adobe.com/wiki/index.php/Cairngorm)which uses the Command design pattern.
+
+What Cairngorm does is to move these centralised event handlers from the controller into separate "command" classes. In a simple sense we are putting each of these event handlers into their own separate classes that contains just that event handler and and services the command uses. We could simply copy and paste the event handlers over as they are, initialise the class and pass the handler function (it will need to be public) within the class as the event handler. However, we want to make our lives a bit easier and this is where the command design pattern comes in.
+
+```
+<code class="language-actionscript">package com.clockobj.gotidal.controller{import flash.events.Event;
+
+import mx.core.UIComponent;
+
+import mx.events.FlexEvent;
+
+public class GoTidalController extends UIComponent {
+
+private var am:AppModel = AppModel.getInstance();
+
+public function GoTidalController() {
+
+      addEventListener( FlexEvent.CREATION_COMPLETE, setupEventListeners );
+
+    }
+
+private function setupEventListeners( event:Event):void {
+
+      systemManager.addEventListener(AppEvent.COUNTRYCHANGED, countryChanged);
+
+    }
+
+// Country Changed
+
+private function countryChanged(e:AppEvent):void {
+
+      am.setCountry(e.data);
+
+    }
+
+  }
+
+}
+```
+
+Above we have an example of an EasyMVC controller which extends the UIComponent and then adds our centralised event handlers to the system manager (which can see all application events through bubbling). In this example, we have a single event handler called countryChanged which stores the changed data (passed by the event) into the AppModel (Singleton model) but as our application grows we could end up with tens if not hundreds of commands.
+
+Cairngorm's strength is toe move these commands out into their own classes as discussed above. I like to create an interface definition for this class so that all commands are standard and then I can write a method to handle registering the class as an event listener on the systemManager class.
+
+I use the following interface:
+
+```
+<code class="language-actionscript">package com.triggersoft.core.emvc{  import flash.events.Event;
+
+public interface IEMVCCommand
+
+  {
+
+    function execute(e:Event):void;
+
+  }
+
+}
+```
+
+Then any commands we create we need to implement this interface:
+
+```
+<code class="language-actionscript">package com.clockobj.gotidal.controller.commands{  import flash.events.Event;  public class CountryChangedCommand implements IEMVCCommand
+
+  {
+
+    public function execute(event:Event):void
+
+    {
+
+      AppModel.getInstance().setCountry(event.data);
+
+    }
+
+  }
+
+}
+```
+
+Then rather than having to keep initialising the new command and then adding the command as an event listener as follows:
+
+```
+<code class="language-actionscript">private function setupEventListeners( event:Event):void {
+
+  var countryChangedCmd:CountryChangedCommand = new CountryChangedCommand();
+
+  systemManager.addEventListener(AppEvent.COUNTRYCHANGED, countryChangedCmd.execute());
+
+}
+```
+
+We can create a function to do this for us, making use of the interface definition we created:
+
+```
+<code class="language-actionscript">private function addCommand(eventType:String, cmd:IEMVCCommand) {
+
+  systemManager.addEventListener(eventType, cmd.execute());
+
+}
+```
+
+And in our event controller simplify it so that commands are added using our addCommand function
+
+```
+<code class="language-actionscript">private function setupEventListeners( event:Event):void {
+
+  addCommand(AppEvent.COUNTRYCHANGED, new countryChangedCmd());
+
+}
+```
+
+With this solution we borrow how Cairngorm handles events and have a scalable Controller where each handler is in it's own command class and the controller is only used to register these commands as eventListeners on the systemManager class..
+
+Taking this idea further, I like to create a EMVCController class which I then extend. i.e. the EMVCController has the addCommand method in it and it extends UIComponent and my Flex's application controller has to simply extend EMVCController instead of UIComponent as was done previously and I inherit the addCommand method so don't have to write it for each project.
+
+[In part 2 I will look at how we share web / http services between commands.](/insights/scaling-easymvc-flex-application-grows-part-2-services)

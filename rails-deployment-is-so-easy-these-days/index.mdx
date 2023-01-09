@@ -1,0 +1,73 @@
+---
+title: 'Rails deployment is so easy these days'
+description: ""
+published: 2008-11-22
+redirect_from: 
+            - https://gotripod.com/insights/rails-deployment-easy-days/
+categories: "Development insights"
+hero: ../../../defaultHero.jpg
+---
+I have been meaning to blog about Phusion Passenger for a while as about 3-4 months ago we migrated Stubmatic from using Apache / Mongrel Cluster to [Phusion Passenger A.K.A. mod_rails](http://www.modrails.com/).
+
+Mod rails is extreamly easy to install. Make sure you update gem first:
+
+```
+<code class="language-bash">gem update --system
+```
+
+Then install the Phusion Passenger gem
+
+```
+<code class="language-bash">gem install passenger
+```
+
+Once complete you can run the Phusion Passenger install that compiles mod_rails for you.
+
+```
+<code class="language-bash">passenger-install-apache2-module
+```
+
+Once this completes it will give you some code to past into your httpd.conf file and you are ready to start configuring your sites.. Well actually if you have been using Mongrels then time to strip most of the configuration out of your https.conf file. You can have as simple a configuration as shown below. **Note:** The DocumentRoot should be set to the public folder within your app. Passenger automatically detects that this is a rails app.
+
+```
+<code class="language-powershell">ServerName www.stubmatic.com
+DocumentRoot /websites/stubmatic/public
+```
+
+One thing to note is that by default Passenger disables ModRewrite for that VirtualHost and in our case we use ModRewrite for a number of things such as providing a Maintenance page when maintenance.html is in our public folder allowing us to take the app offline. We also use ModRewrite to hide .svn folders, so we needed to use ModRewrite. Thankfully Passenger provides a solution. **Note: You must first make sure you remove the .htaccess file in your rails public folder!**
+
+So our new Apache configuration looks like this:
+
+```
+<code class="language-powershell">ServerName www.stubmatic.com
+DocumentRoot /websites/stubmatic/public
+
+RailsAllowModRewrite on
+
+RewriteEngine On
+
+RewriteRule ^(.*/)?.svn/ - [F,L]
+
+RewriteCond %{DOCUMENT_ROOT}/maintenance.html -f
+RewriteCond %{SCRIPT_FILENAME} !maintenance.html
+RewriteRule ^.*$ /maintenance.html [L]
+```
+
+If you want to setup an Apache / Phusion Passenger testing server you will also need to add the following directive to your VirtualHost configuration:
+
+```
+<code class="language-powershell">RailsEnv development
+```
+
+As you can see Phusion Passenger make deployment of Ruby on Rails as trivial as deploying a PHP. You can easily reload Phusion Passenger by running the following command from within your Rails project root.
+
+```
+<code class="language-powershell">touch tmp/restart.txt
+```
+
+In terms of performance, Phusion Passenger holds it's own against Mongrel and there are [plenty of details on Phusion's website](http://www.modrails.com/documentation.html).
+
+For more information:
+
+1. [Phusion Passenger](http://www.modrails.com/)
+2. [Phusion Passenger Documentation](http://www.modrails.com/documentation/Users%20guide.html)
